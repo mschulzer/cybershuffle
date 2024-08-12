@@ -1,107 +1,90 @@
-from machine import Pin,Timer
 import time
 import _thread
+from machine import Pin
 
-# TCS3200
-# https://www.waveshare.com/wiki/Color_Sensor#Specifications
+class TCS3200:
+    def __init__(self):
+        self.g_count = 0              # count the frequency
+        self.g_array = [0, 0, 0]      # filter of RGB queue
+        self.g_SF = [0, 0, 0]         # save the RGB Scale factor
+        self.i = 0                    # iterator for the filter states
+        
+        # Define pins and their initialization
+        self.S0 = Pin(18, Pin.OUT)
+        self.S1 = Pin(19, Pin.OUT)
+        self.S2 = Pin(20, Pin.OUT)
+        self.S3 = Pin(21, Pin.OUT)
+        self.LED = Pin(16, Pin.OUT)
+        
+        # GPIO_OUT FREQUENCY SCALING 2%
+        self.S0(1)
+        self.S1(0)
+        self.LED(1)
+        
+        self.button_red = Pin(17, Pin.IN, Pin.PULL_DOWN)
+        self.button_red.irq(trigger=Pin.IRQ_FALLING, handler=self.int_handler)
+        
+        # Start the second core for color sensing
+        _thread.start_new_thread(self.TSC_Callback, ())
 
+    def int_handler(self, pin):
+        self.button_red.irq(handler=None)  # OFF IRQ
+        self.g_count += 1
+        self.button_red.irq(handler=self.int_handler)  # ON IRQ
 
-g_count = 0              # count the frequecy
-adj_num = 0              # store the RGB value
-g_array = [0, 0, 0]      # filter of RGB queue
-g_SF    = [0, 0, 0]      # save the RGB Scale factor
+    def TSC_Callback(self):
+        while True:
+            time.sleep(1)
+            if self.i == 0:
+                print("->WB Start")
+                self.i += 1
+                self.g_count = 0
+                # Filter: Red
+                self.S2(0)
+                self.S3(0)
+            elif self.i == 1:
+                print("->Frequency R=", self.g_count)
+                self.g_array[0] = self.g_count
+                self.g_count = 0
+                self.i += 1
+                # Filter: Green
+                self.S2(1)
+                self.S3(1)
+            elif self.i == 2:
+                print("->Frequency G=", self.g_count)
+                self.g_array[1] = self.g_count
+                self.g_count = 0
+                self.i += 1
+                # Filter: Blue
+                self.S2(0)
+                self.S3(1)
+            elif self.i == 3:
+                print("->Frequency B=", self.g_count)
+                self.g_array[2] = self.g_count
+                self.g_count = 0
+                self.i += 1
+                print("->WB End")
+                # No filter
+                self.S2(1)
+                self.S3(0)
+            else:
+                self.g_count = 0
 
-# Define pins and their initialization
-S0  = machine.Pin(18, machine.Pin.OUT)
-S1  = machine.Pin(19, machine.Pin.OUT)
-S2  = machine.Pin(20, machine.Pin.OUT)
-S3  = machine.Pin(21, machine.Pin.OUT)
-LED = machine.Pin(16, machine.Pin.OUT)
-
-# GPIO_OUT FREQUENCY SCALING 2%
-S0(1)
-S1(0)
-LED(1)
-
-
-button_red = machine.Pin(17, machine.Pin.IN, machine.Pin.PULL_DOWN)
-
-def int_handler(pin):
-    button_red.irq(handler=None) #OFF IRQ
-
-    global g_count
-    g_count = g_count + 1
-    button_red.irq(handler=int_handler) #ON IRQ
-
-button_red.irq(trigger=machine.Pin.IRQ_FALLING, handler=int_handler)
-
-
-i=0
-def TSC_Callback():
-    global i
-    global g_array
-    global g_count
-    while True:
-        time.sleep(1)
-        if(i == 0):
-            print("->WB Start")
-            i = i + 1
-            g_count = 0
-            # Filter: Red
-            S2(0)
-            S3(0)
-        elif i == 1:
-            print("->Frequency R=", g_count)
-            g_array[0] = g_count
-            g_count = 0
-            i = i + 1
-            # Filter: Green
-            S2(1)
-            S3(1)
-        elif i == 2:
-            print("->Frequency G=", g_count)
-            g_array[1] = g_count
-            g_count = 0
-            i = i + 1
-            # Filter: Blue
-            S2(0)
-            S3(1)
-        elif i == 3:
-            print("->Frequency B=", g_count)
-            g_array[2] = g_count
-            g_count = 0
-            i = i + 1
-            print("->WB Endr")
-            # No filter
-            S2(1)
-            S3(0)
-        else:
-            g_count = 0
-
-#Turn on the second core
-_thread.start_new_thread(TSC_Callback, ())
-
-if __name__ == "__main__":
-
-    time.sleep(5)
-    for j in range(3):
-        print(g_array[j])
-    g_SF[0] = 255.0 / g_array[0]   #R Scale factor
-    g_SF[1] = 255.0 / g_array[1]   #G Scale factor
-    g_SF[2] = 255.0 / g_array[2]   #B Scale factor
-    for j in range(3):
-        print(g_SF[j])
-    
-    while True:
-        i = 0
-
+    def calibrate(self):
+        time.sleep(5)
         for j in range(3):
-            if((int)(g_array[j] * g_SF[j]) > 255) :
-                print("255")
-            else :
-                print((int)(g_array[j] * g_SF[j]))
-        time.sleep(4)
+            print(self.g_array[j])
+        self.g_SF[0] = 255.0 / self.g_array[0]   # R Scale factor
+        self.g_SF[1] = 255.0 / self.g_array[1]   # G Scale factor
+        self.g_SF[2] = 255.0 / self.g_array[2]   # B Scale factor
+        for j in range(3):
+            print(self.g_SF[j])
 
-
-        
-        
+    def get_rgb(self):
+        rgb_values = []
+        for j in range(3):
+            val = int(self.g_array[j] * self.g_SF[j])
+            if val > 255:
+                val = 255
+            rgb_values.append(val)
+        return rgb_values
