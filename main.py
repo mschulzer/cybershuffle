@@ -7,5 +7,5 @@ sensor.calibrate()
 while True:
   sensor.i = 0
   rgb = sensor.get_rgb()
-  print(f"RGB: {rgb}")
-  time.sleep(4)
+  print(rgb) # Or rgb[0], ...
+  time.sleep(2)
