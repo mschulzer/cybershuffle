@@ -4,10 +4,10 @@ from machine import Pin
 
 class TCS3200:
     def __init__(self):
-        self.g_count = 0              # count the frequency
-        self.g_array = [0, 0, 0]      # filter of RGB queue
-        self.g_SF = [0, 0, 0]         # save the RGB Scale factor
-        self.i = 0                    # iterator for the filter states
+        self.g_count = 0
+        self.g_array = [0, 0, 0]
+        self.g_SF = [0, 0, 0]
+        self.i = 0
         
         # Define pins and their initialization
         self.S0 = Pin(18, Pin.OUT)
@@ -36,14 +36,12 @@ class TCS3200:
         while True:
             time.sleep(1)
             if self.i == 0:
-                print("->WB Start")
                 self.i += 1
                 self.g_count = 0
                 # Filter: Red
                 self.S2(0)
                 self.S3(0)
             elif self.i == 1:
-                print("->Frequency R=", self.g_count)
                 self.g_array[0] = self.g_count
                 self.g_count = 0
                 self.i += 1
@@ -51,7 +49,6 @@ class TCS3200:
                 self.S2(1)
                 self.S3(1)
             elif self.i == 2:
-                print("->Frequency G=", self.g_count)
                 self.g_array[1] = self.g_count
                 self.g_count = 0
                 self.i += 1
@@ -59,11 +56,9 @@ class TCS3200:
                 self.S2(0)
                 self.S3(1)
             elif self.i == 3:
-                print("->Frequency B=", self.g_count)
                 self.g_array[2] = self.g_count
                 self.g_count = 0
                 self.i += 1
-                print("->WB End")
                 # No filter
                 self.S2(1)
                 self.S3(0)
@@ -72,13 +67,10 @@ class TCS3200:
 
     def calibrate(self):
         time.sleep(5)
-        for j in range(3):
-            print(self.g_array[j])
+        print("Calibrating TCS3200")
         self.g_SF[0] = 255.0 / self.g_array[0]   # R Scale factor
         self.g_SF[1] = 255.0 / self.g_array[1]   # G Scale factor
         self.g_SF[2] = 255.0 / self.g_array[2]   # B Scale factor
-        for j in range(3):
-            print(self.g_SF[j])
 
     def get_rgb(self):
         rgb_values = []
