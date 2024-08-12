@@ -66,11 +66,12 @@ class TCS3200:
                 self.g_count = 0
 
     def calibrate(self):
+        print("Calibrating TCS3200 ...")
         time.sleep(5)
-        print("Calibrating TCS3200")
         self.g_SF[0] = 255.0 / self.g_array[0]   # R Scale factor
         self.g_SF[1] = 255.0 / self.g_array[1]   # G Scale factor
         self.g_SF[2] = 255.0 / self.g_array[2]   # B Scale factor
+        print("Done.")
 
     def get_rgb(self):
         rgb_values = []
