@@ -8,4 +8,4 @@ while True:
   sensor.i = 0
   rgb = sensor.get_rgb()
   print(rgb) # Or rgb[0], ...
-  time.sleep(2)
+  time.sleep(4)
