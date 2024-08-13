@@ -3,13 +3,13 @@ from machine import Pin
 import time
 
 pixPin = 0
-pixSize = 8
-pix = Neopixel(pixSize, 0, Pin(pixPin), "RGB")
+pixNum = 8
+pix = Neopixel(pixNum, 0, Pin(pixPin), "RGB")
 red=(255, 0, 0)
 green=(0, 255, 0)
 
 while True:
-    for i in range(0, pixSize, 1):
+    for i in range(0, pixNum, 1):
         pix.fill(red)
         pix[i] = green
         pix.show()
